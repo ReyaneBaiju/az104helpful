@@ -1,0 +1,164 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "name": "mypubic",
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2024-03-01",
+            "location": "centralindia",
+            "properties": {
+                "publicIPAllocationMethod": "Static"
+            },
+            "sku" : {
+                "name" : "Basic"
+            }
+        },
+        {
+            "name": "myvnet",
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2024-03-01",
+            "location": "centralindia",
+            "dependsOn" : [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', 'mynsg')]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.0.0.0/16"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "Subnet1",
+                        "properties": {
+                            "addressPrefix": "10.0.0.0/24",
+                            "networkSecurityGroup" : {
+                                "id" : "[resourceId('Microsoft.Network/networkSecurityGroups','mynsg')]"
+                            }
+                        }
+                    },
+                    {
+                        "name": "Subnet2",
+                        "properties": {
+                            "addressPrefix": "10.0.1.0/24"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "mynic",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2024-03-01",
+            "location": "centralindia",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', 'myvnet')]",
+                "[resourceId('Microsoft.Network/publicIPAddresses', 'mypubic')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'myvnet', 'Subnet1')]"
+                            },
+                            "publicIPAddress" : {
+                                "id" : "[resourceId('Microsoft.Network/publicIPAddresses', 'mypubic')]"
+                            }
+                        }
+                    }
+                ],
+                "networkSecurityGroup" : {
+                    "id" : "[resourceId('Microsoft.Network/networkSecurityGroups','mynsg')]"
+                }
+            }
+        },
+        {
+            "name": "mynsg",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2024-03-01",
+            "location": "centralindia",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "nsgRule1",
+                        "properties": {
+                            "description": "description",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "3389",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 100,
+                            "direction": "Inbound"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "reyanstorage",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2023-05-01",
+            "location": "centralindia",
+            "kind": "StorageV2",
+            "sku": {
+                "name": "Standard_LRS"
+            }
+        },
+        {
+    "name": "myvm",
+    "type": "Microsoft.Compute/virtualMachines",
+    "apiVersion": "2024-07-01",
+    "location": "centralindia",
+    "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', toLower('reyanstorage'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', 'mynic')]"
+    ],
+    "properties": {
+        "hardwareProfile": {
+            "vmSize": "Standard_D2s_v3"
+        },
+        "osProfile": {
+            "computerName": "myvm",
+            "adminUsername": "azureuser",
+            "adminPassword": "Reyanebaiju@01"
+        },
+        "storageProfile": {
+            "imageReference": {
+                "publisher": "MicrosoftWindowsServer",
+                "offer": "WindowsServer",
+                "sku": "2022-Datacenter",
+                "version": "latest"
+            },
+            "osDisk": {
+                "name": "windowsVM1OSDisk",
+                "caching": "ReadWrite",
+                "createOption": "FromImage"
+            }
+        },
+        "networkProfile": {
+            "networkInterfaces": [
+                {
+                    "id": "[resourceId('Microsoft.Network/networkInterfaces', 'mynic')]"
+                }
+            ]
+        },
+        "diagnosticsProfile": {
+            "bootDiagnostics": {
+                "enabled": true,
+                "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts', toLower('reyanstorage')), '2023-01-01').primaryEndpoints.blob]"
+            }
+        }
+    }
+}
+    ],
+    "outputs": {}
+}
